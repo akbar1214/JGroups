@@ -243,6 +243,7 @@
                             <directory>${basedir}/tutorial/build</directory>
                             <directory>${basedir}/tmp</directory>
                             <directory>${basedir}/dist</directory>
+                            <directory>${basedir}/target/schema</directory>
                         </fileset>
                     </filesets>
                 </configuration>
@@ -282,42 +283,75 @@
                        </sources>
                     </configuration>
                  </execution>
-              </executions>
-           </plugin>
-           <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
+               </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>compile</id>
+                        <id>copy-conf-xsd-to-schema</id>
                         <phase>compile</phase>
                         <goals>
-                            <goal>run</goal>
+                            <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <target>
-                                <property name="compile_classpath" refid="maven.compile.classpath" />
-                                <property name="plugin_classpath" refid="maven.plugin.classpath" />
-                                <delete dir="${project.build.directory}/schema" failonerror="false" />
-                                <mkdir dir="${project.build.directory}/schema" />
-                                <java classname="org.jgroups.util.XMLSchemaGenerator" fork="true">
-                                    <classpath>
-                                        <pathelement path="${compile_classpath}" />
-                                        <pathelement path="${plugin_classpath}" />
-                                    </classpath>
-                                    <jvmarg value="-Dlog4j2.disable.jmx=true" />
-                                    <arg line="-o ${project.build.directory}/schema" />
-                                </java>
-                                <copy todir="${project.build.directory}/schema">
-                                    <fileset dir="conf">
-                                        <include name="*.xsd" />
-                                    </fileset>
-                                </copy>
-                                <copy todir="${project.build.outputDirectory}">
-                                    <fileset dir="${project.build.directory}/schema">
-                                        <include name="*.xsd" />
-                                    </fileset>
-                                </copy>
-                            </target>
+                            <outputDirectory>${project.build.directory}/schema</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>conf</directory>
+                                    <includes>
+                                        <include>*.xsd</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-schema-to-classes</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.build.directory}/schema</directory>
+                                    <includes>
+                                        <include>*.xsd</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>generate-xml-schema</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <classpathScope>compile</classpathScope>
+                            <mainClass>org.jgroups.util.XMLSchemaGenerator</mainClass>
+                            <systemProperties>
+                                <systemProperty>
+                                    <key>log4j2.disable.jmx</key>
+                                    <value>true</value>
+                                </systemProperty>
+                            </systemProperties>
+                            <arguments>
+                                <argument>-o</argument>
+                                <argument>${project.build.directory}/schema</argument>
+                            </arguments>
                         </configuration>
                     </execution>
                 </executions>
@@ -413,11 +447,6 @@
         </plugins>
         <pluginManagement>
             <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <version>3.2.0</version>
-                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
